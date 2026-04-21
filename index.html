@@ -12,7 +12,7 @@
             margin: 0;
             overflow: hidden;
             font-family: 'Segoe UI', system-ui, sans-serif;
-            touch-action: none; /* Предотвращает зум и скролл */
+            touch-action: none;
         }
         canvas {
             display: block;
@@ -24,66 +24,60 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(15, 23, 42, 0.9);
-            z-index: 50;
+            background: rgba(15, 23, 42, 0.95);
+            z-index: 100;
         }
-        /* Стили мобильного управления */
-        .controls-container {
+        /* Зоны управления */
+        .touch-zone {
             position: absolute;
-            bottom: 30px;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            padding: 0 40px;
-            pointer-events: none;
+            bottom: 0;
+            height: 70%;
+            width: 50%;
             z-index: 40;
-        }
-        .joystick-base {
-            width: 140px;
-            height: 140px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(5px);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            position: relative;
             pointer-events: auto;
         }
-        .joystick-stick {
-            width: 60px;
-            height: 60px;
-            background: white;
-            border-radius: 50%;
+        #left-zone { left: 0; }
+        #right-zone { right: 0; }
+
+        .control-marker {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
-        .action-button {
-            width: 90px;
-            height: 90px;
-            background: rgba(59, 130, 246, 0.5);
-            border: 3px solid #3b82f6;
+            width: 80px;
+            height: 80px;
+            border: 2px solid rgba(255,255,255,0.3);
             border-radius: 50%;
+            pointer-events: none;
+            display: none;
+            z-index: 45;
+            transform: translate(-50%, -50%);
+        }
+
+        .action-button {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 80px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 3px solid #3b82f6;
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 32px;
+            z-index: 60;
             pointer-events: auto;
             backdrop-filter: blur(5px);
-            transition: transform 0.1s, background 0.2s;
         }
         .action-button.active {
             background: #fbbf24;
             border-color: #d97706;
-            transform: scale(0.9);
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
         }
         .level-card {
             background: #1e293b;
             border: 2px solid #334155;
-            min-width: 120px;
+            min-width: 130px;
         }
         .level-card.locked { opacity: 0.5; filter: grayscale(1); }
     </style>
@@ -92,31 +86,36 @@
 
 <!-- Главное меню -->
 <div id="menu-screen" class="ui-screen">
-    <div class="text-center w-full px-4 overflow-y-auto max-h-screen py-8">
-        <h1 class="text-4xl font-black mb-1 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">EV3 MASTER</h1>
-        <p class="text-[10px] text-gray-500 uppercase tracking-widest mb-6">Mobile Edition</p>
+    <div class="text-center w-full px-4 py-8">
+        <h1 class="text-5xl font-black mb-1 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">EV3 MASTER</h1>
+        <p class="text-[10px] text-gray-500 uppercase tracking-widest mb-10">Smart Touch Control</p>
         
-        <div class="grid grid-cols-2 gap-3 mb-8 max-w-sm mx-auto">
-            <div onclick="selectLevel('line')" id="card-line" class="level-card p-4 rounded-xl cursor-pointer">
-                <div class="text-2xl mb-2">➖</div>
-                <h3 class="text-sm font-bold">ЛИНИЯ</h3>
-                <p class="text-[10px] text-gray-500">Рекорд: <span id="record-line">0</span></p>
+        <div class="grid grid-cols-2 gap-4 max-w-sm mx-auto">
+            <div onclick="selectLevel('line')" id="card-line" class="level-card p-5 rounded-2xl cursor-pointer">
+                <div class="text-3xl mb-2">➖</div>
+                <h3 class="text-sm font-bold uppercase">Линия</h3>
+                <p class="text-[10px] text-gray-500 mt-1">Рекорд: <span id="record-line">0</span></p>
             </div>
-            <div onclick="selectLevel('zigzag')" id="card-zigzag" class="level-card p-4 rounded-xl cursor-pointer locked">
-                <div class="text-2xl mb-2">📉</div>
-                <h3 class="text-sm font-bold">ЗИГЗАГ</h3>
-                <p class="text-[10px] text-gray-500">Рекорд: <span id="record-zigzag">0</span></p>
+            <div onclick="selectLevel('zigzag')" id="card-zigzag" class="level-card p-5 rounded-2xl cursor-pointer locked">
+                <div class="text-3xl mb-2">📉</div>
+                <h3 class="text-sm font-bold uppercase">Зигзаг</h3>
+                <p class="text-[10px] text-gray-500 mt-1">Рекорд: <span id="record-zigzag">0</span></p>
             </div>
-            <div onclick="selectLevel('spiral')" id="card-spiral" class="level-card p-4 rounded-xl cursor-pointer locked">
-                <div class="text-2xl mb-2">🌀</div>
-                <h3 class="text-sm font-bold">СПИРАЛЬ</h3>
-                <p class="text-[10px] text-gray-500">Рекорд: <span id="record-spiral">0</span></p>
+            <div onclick="selectLevel('spiral')" id="card-spiral" class="level-card p-5 rounded-2xl cursor-pointer locked">
+                <div class="text-3xl mb-2">🌀</div>
+                <h3 class="text-sm font-bold uppercase">Спираль</h3>
+                <p class="text-[10px] text-gray-500 mt-1">Рекорд: <span id="record-spiral">0</span></p>
             </div>
-            <div onclick="selectLevel('maze')" id="card-maze" class="level-card p-4 rounded-xl cursor-pointer locked">
-                <div class="text-2xl mb-2">🧱</div>
-                <h3 class="text-sm font-bold">ЛАБИРИНТ</h3>
-                <p class="text-[10px] text-gray-500">Рекорд: <span id="record-maze">0</span></p>
+            <div onclick="selectLevel('maze')" id="card-maze" class="level-card p-5 rounded-2xl cursor-pointer locked">
+                <div class="text-3xl mb-2">🧱</div>
+                <h3 class="text-sm font-bold uppercase">Лабиринт</h3>
+                <p class="text-[10px] text-gray-500 mt-1">Рекорд: <span id="record-maze">0</span></p>
             </div>
+        </div>
+        
+        <div class="mt-8 text-xs text-slate-500 italic">
+            Левая часть экрана: Газ/Тормоз<br>
+            Правая часть экрана: Повороты
         </div>
     </div>
 </div>
@@ -154,27 +153,27 @@
 </div>
 
 <!-- Игровой HUD -->
-<div class="absolute top-4 left-4 right-4 flex justify-between pointer-events-none z-30">
-    <div class="bg-slate-900/80 backdrop-blur px-3 py-2 rounded-xl border border-slate-700">
-        <div id="hud-timer" class="text-xl font-mono font-bold">01:00</div>
-        <div id="hud-percent" class="text-xs font-bold text-blue-400">0% ОЧИЩЕНО</div>
+<div class="absolute top-4 left-4 right-4 flex justify-between pointer-events-none z-50">
+    <div class="bg-slate-900/90 backdrop-blur px-4 py-2 rounded-2xl border border-slate-700">
+        <div id="hud-timer" class="text-xl font-mono font-bold leading-none">01:00</div>
+        <div id="hud-percent" class="text-[10px] font-bold text-blue-400 mt-1 uppercase tracking-tighter">0% Очищено</div>
     </div>
     <div class="flex gap-2">
-        <button onclick="togglePause()" class="bg-slate-900/80 backdrop-blur p-3 rounded-xl border border-slate-700 pointer-events-auto">⏸</button>
-        <div class="bg-slate-900/80 backdrop-blur px-3 py-2 rounded-xl border border-slate-700 min-w-[80px] text-right">
-            <div class="text-[8px] text-gray-500 uppercase">Счет</div>
-            <div id="hud-score" class="text-lg font-black">0</div>
+        <button onclick="togglePause()" class="bg-slate-900/90 backdrop-blur p-4 rounded-2xl border border-slate-700 pointer-events-auto">⏸</button>
+        <div class="bg-slate-900/90 backdrop-blur px-4 py-2 rounded-2xl border border-slate-700 min-w-[100px] text-right">
+            <div class="text-[10px] text-gray-500 uppercase font-bold leading-none mb-1">Счет</div>
+            <div id="hud-score" class="text-xl font-black leading-none">0</div>
         </div>
     </div>
 </div>
 
-<!-- Мобильные Контроллеры -->
-<div id="mobile-controls" class="controls-container hidden">
-    <div class="joystick-base" id="joystick-base">
-        <div class="joystick-stick" id="joystick-stick"></div>
-    </div>
-    <div class="action-button" id="brush-btn">🧹</div>
-</div>
+<!-- Мобильные Зоны Управления -->
+<div id="left-zone" class="touch-zone"></div>
+<div id="right-zone" class="touch-zone"></div>
+<div id="l-marker" class="control-marker"></div>
+<div id="r-marker" class="control-marker"></div>
+
+<button id="brush-btn" class="action-button hidden">🧹</button>
 
 <canvas id="simCanvas"></canvas>
 
@@ -185,7 +184,6 @@
     let walls = [];
     let totalSnowInPath = 0;
     
-    // Состояние игры
     let gameState = 'MENU';
     let currentLevel = 'line';
     let levelsData = {
@@ -204,65 +202,74 @@
         brushActive: false, brushAngle: 0
     };
 
-    // Джойстик данные
-    const joystick = {
-        active: false,
-        startX: 0, startY: 0,
-        currX: 0, currY: 0,
-        maxRadius: 60
+    // Состояние тач-управления
+    const touches = {
+        left: { active: false, startY: 0 },
+        right: { active: false, startX: 0 }
     };
 
     function init() {
         canvas = document.getElementById('simCanvas');
         ctx = canvas.getContext('2d');
         resize();
-        
-        setupTouchControls();
+        setupInput();
         loadProgress();
         updateMenuUI();
         gameLoop();
     }
 
-    function setupTouchControls() {
-        const jBase = document.getElementById('joystick-base');
-        const jStick = document.getElementById('joystick-stick');
+    function setupInput() {
+        const lZone = document.getElementById('left-zone');
+        const rZone = document.getElementById('right-zone');
+        const lMarker = document.getElementById('l-marker');
+        const rMarker = document.getElementById('r-marker');
         const brushBtn = document.getElementById('brush-btn');
 
-        const handleMove = (e) => {
-            if (!joystick.active) return;
-            const touch = e.touches[0];
-            const rect = jBase.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            
-            let dx = touch.clientX - centerX;
-            let dy = touch.clientY - centerY;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            
-            if (dist > joystick.maxRadius) {
-                dx *= joystick.maxRadius / dist;
-                dy *= joystick.maxRadius / dist;
-            }
-
-            jStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-            
-            // Расчет управления
-            // dy - скорость (инвертировано), dx - поворот
-            robot.speed = -(dy / joystick.maxRadius) * 3.5;
-            robot.turnSpeed = (dx / joystick.maxRadius) * 0.06;
-        };
-
-        jBase.addEventListener('touchstart', (e) => {
-            joystick.active = true;
-            handleMove(e);
+        // Левая зона: Движение (Вверх/Вниз)
+        lZone.addEventListener('touchstart', (e) => {
+            touches.left.active = true;
+            touches.left.startY = e.touches[0].clientY;
+            lMarker.style.display = 'block';
+            lMarker.style.left = e.touches[0].clientX + 'px';
+            lMarker.style.top = e.touches[0].clientY + 'px';
         });
 
-        window.addEventListener('touchmove', handleMove, { passive: false });
-        window.addEventListener('touchend', () => {
-            joystick.active = false;
-            jStick.style.transform = `translate(-50%, -50%)`;
+        lZone.addEventListener('touchmove', (e) => {
+            if(!touches.left.active) return;
+            const deltaY = touches.left.startY - e.touches[0].clientY;
+            const power = Math.max(-1, Math.min(1, deltaY / 100));
+            robot.speed = power * 4;
+            lMarker.style.top = e.touches[0].clientY + 'px';
+        });
+
+        // Правая зона: Повороты (Влево/Вправо)
+        rZone.addEventListener('touchstart', (e) => {
+            touches.right.active = true;
+            touches.right.startX = e.touches[0].clientX;
+            rMarker.style.display = 'block';
+            rMarker.style.left = e.touches[0].clientX + 'px';
+            rMarker.style.top = e.touches[0].clientY + 'px';
+        });
+
+        rZone.addEventListener('touchmove', (e) => {
+            if(!touches.right.active) return;
+            const deltaX = e.touches[0].clientX - touches.right.startX;
+            const power = Math.max(-1, Math.min(1, deltaX / 100));
+            robot.turnSpeed = power * 0.08;
+            rMarker.style.left = e.touches[0].clientX + 'px';
+        });
+
+        const resetTouches = () => {
+            touches.left.active = false;
+            touches.right.active = false;
             robot.speed = 0;
             robot.turnSpeed = 0;
+            lMarker.style.display = 'none';
+            rMarker.style.display = 'none';
+        };
+
+        window.addEventListener('touchend', (e) => {
+            if(e.touches.length === 0) resetTouches();
         });
 
         brushBtn.addEventListener('touchstart', (e) => {
@@ -276,7 +283,7 @@
         gameState = 'PLAYING';
         document.getElementById('menu-screen').classList.add('hidden');
         document.getElementById('result-screen').classList.add('hidden');
-        document.getElementById('mobile-controls').classList.remove('hidden');
+        document.getElementById('brush-btn').classList.remove('hidden');
         
         score = 0;
         robot.speed = 0;
@@ -319,7 +326,7 @@
         document.getElementById('menu-screen').classList.remove('hidden');
         document.getElementById('pause-screen').classList.add('hidden');
         document.getElementById('result-screen').classList.add('hidden');
-        document.getElementById('mobile-controls').classList.add('hidden');
+        document.getElementById('brush-btn').classList.add('hidden');
         updateMenuUI();
     }
 
@@ -428,24 +435,24 @@
 
         let wallHit = false;
         for(let wall of walls) {
-            if(nextX + 15 > wall.x && nextX - 15 < wall.x + wall.w && 
-               nextY + 15 > wall.y && nextY - 15 < wall.y + wall.h) { wallHit = true; break; }
+            if(nextX + 16 > wall.x && nextX - 16 < wall.x + wall.w && 
+               nextY + 16 > wall.y && nextY - 16 < wall.y + wall.h) { wallHit = true; break; }
         }
         
         if(nextX < 15 || nextX > canvas.width - 15 || nextY < 15 || nextY > canvas.height - 15) wallHit = true;
 
         if(wallHit) {
-            robot.speed *= -0.5;
+            robot.speed *= -0.3;
         } else {
             robot.x = nextX;
             robot.y = nextY;
         }
 
         if (robot.brushActive) {
-            robot.brushAngle += 0.4;
+            robot.brushAngle += 0.5;
             const bX = robot.x + Math.cos(robot.angle) * 30;
             const bY = robot.y + Math.sin(robot.angle) * 30;
-            const radius = 32;
+            const radius = 34;
             const sI = Math.floor((bX - radius) / SNOW_DENSITY);
             const eI = Math.ceil((bX + radius) / SNOW_DENSITY);
             const sJ = Math.floor((bY - radius) / SNOW_DENSITY);
@@ -482,7 +489,7 @@
                     ctx.fillStyle = '#ffffff';
                     ctx.fillRect(i * SNOW_DENSITY, j * SNOW_DENSITY, SNOW_DENSITY - 1, SNOW_DENSITY - 1);
                 } else if(snowGrid[i][j] === 2) {
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
                     ctx.fillRect(i * SNOW_DENSITY, j * SNOW_DENSITY, SNOW_DENSITY, SNOW_DENSITY);
                 }
             }
@@ -491,15 +498,27 @@
         ctx.save();
         ctx.translate(robot.x, robot.y);
         ctx.rotate(robot.angle);
-        ctx.fillStyle = '#f8fafc';
-        ctx.fillRect(-18, -22, 36, 44); // Корпус
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(-10, -15, 20, 12); // Экран
         
-        ctx.translate(28, 0);
+        // Гусеницы
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(-22, -24, 44, 8);
+        ctx.fillRect(-22, 16, 44, 8);
+
+        // Корпус
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(-20, -18, 40, 36, 4) : ctx.rect(-20, -18, 40, 36);
+        ctx.fill();
+        
+        // Экран
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(-8, -12, 16, 10);
+        
+        // Щетка
+        ctx.translate(30, 0);
         ctx.rotate(robot.brushAngle);
         ctx.fillStyle = robot.brushActive ? '#fbbf24' : '#475569';
-        ctx.fillRect(-3, -22, 6, 44); // Щетка
+        ctx.fillRect(-3, -24, 6, 48);
         ctx.restore();
     }
 
@@ -524,12 +543,12 @@
     }
 
     function loadProgress() {
-        const saved = localStorage.getItem('ev3_mobile_progress');
+        const saved = localStorage.getItem('ev3_mobile_v2');
         if(saved) levelsData = JSON.parse(saved);
     }
 
     function saveProgress() {
-        localStorage.setItem('ev3_mobile_progress', JSON.stringify(levelsData));
+        localStorage.setItem('ev3_mobile_v2', JSON.stringify(levelsData));
     }
 
     function updateMenuUI() {
