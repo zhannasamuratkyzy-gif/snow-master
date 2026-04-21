@@ -1,9 +1,9 @@
-
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LEGO EV3 Snow Cleaner: Pro Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EV3 Snow Master Mobile</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -12,6 +12,7 @@
             margin: 0;
             overflow: hidden;
             font-family: 'Segoe UI', system-ui, sans-serif;
+            touch-action: none; /* Предотвращает зум и скролл */
         }
         canvas {
             display: block;
@@ -26,133 +27,153 @@
             background: rgba(15, 23, 42, 0.9);
             z-index: 50;
         }
-        .hud-top {
+        /* Стили мобильного управления */
+        .controls-container {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
-            pointer-events: none;
+            bottom: 30px;
+            left: 0;
+            right: 0;
             display: flex;
             justify-content: space-between;
+            align-items: flex-end;
+            padding: 0 40px;
+            pointer-events: none;
+            z-index: 40;
         }
-        .interactive { pointer-events: auto; }
-        .btn-primary {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            transition: all 0.2s;
+        .joystick-base {
+            width: 140px;
+            height: 140px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            position: relative;
+            pointer-events: auto;
         }
-        .btn-primary:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
-        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
-        
+        .joystick-stick {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        .action-button {
+            width: 90px;
+            height: 90px;
+            background: rgba(59, 130, 246, 0.5);
+            border: 3px solid #3b82f6;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+            transition: transform 0.1s, background 0.2s;
+        }
+        .action-button.active {
+            background: #fbbf24;
+            border-color: #d97706;
+            transform: scale(0.9);
+        }
         .level-card {
             background: #1e293b;
             border: 2px solid #334155;
-            transition: all 0.3s;
+            min-width: 120px;
         }
-        .level-card.locked { opacity: 0.6; }
-        .level-card:not(.locked):hover { border-color: #3b82f6; transform: translateY(-5px); }
-
-        .status-panel {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(8px);
-            border: 1px solid #334155;
-        }
+        .level-card.locked { opacity: 0.5; filter: grayscale(1); }
     </style>
 </head>
 <body>
 
 <!-- Главное меню -->
 <div id="menu-screen" class="ui-screen">
-    <div class="text-center max-w-4xl w-full px-4">
-        <h1 class="text-6xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">EV3 SNOW MASTER</h1>
-        <p class="text-gray-400 mb-12 uppercase tracking-widest">Профессиональный симулятор снегоуборщика</p>
+    <div class="text-center w-full px-4 overflow-y-auto max-h-screen py-8">
+        <h1 class="text-4xl font-black mb-1 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">EV3 MASTER</h1>
+        <p class="text-[10px] text-gray-500 uppercase tracking-widest mb-6">Mobile Edition</p>
         
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-            <div onclick="selectLevel('line')" id="card-line" class="level-card p-6 rounded-2xl cursor-pointer">
-                <div class="text-4xl mb-4">➖</div>
-                <h3 class="font-bold">ЛИНИЯ</h3>
-                <p class="text-xs text-gray-500 mt-2">Рекорд: <span id="record-line">0</span></p>
+        <div class="grid grid-cols-2 gap-3 mb-8 max-w-sm mx-auto">
+            <div onclick="selectLevel('line')" id="card-line" class="level-card p-4 rounded-xl cursor-pointer">
+                <div class="text-2xl mb-2">➖</div>
+                <h3 class="text-sm font-bold">ЛИНИЯ</h3>
+                <p class="text-[10px] text-gray-500">Рекорд: <span id="record-line">0</span></p>
             </div>
-            <div onclick="selectLevel('zigzag')" id="card-zigzag" class="level-card p-6 rounded-2xl cursor-pointer locked">
-                <div class="text-4xl mb-4">📉</div>
-                <h3 class="font-bold">ЗИГЗАГ</h3>
-                <p id="lock-zigzag" class="text-[10px] text-red-500 mt-1 italic">Нужно 80% на Линии</p>
-                <p class="text-xs text-gray-500 mt-2">Рекорд: <span id="record-zigzag">0</span></p>
+            <div onclick="selectLevel('zigzag')" id="card-zigzag" class="level-card p-4 rounded-xl cursor-pointer locked">
+                <div class="text-2xl mb-2">📉</div>
+                <h3 class="text-sm font-bold">ЗИГЗАГ</h3>
+                <p class="text-[10px] text-gray-500">Рекорд: <span id="record-zigzag">0</span></p>
             </div>
-            <div onclick="selectLevel('spiral')" id="card-spiral" class="level-card p-6 rounded-2xl cursor-pointer locked">
-                <div class="text-4xl mb-4">🌀</div>
-                <h3 class="font-bold">СПИРАЛЬ</h3>
-                <p id="lock-spiral" class="text-[10px] text-red-500 mt-1 italic">Нужно 80% на Зигзаге</p>
-                <p class="text-xs text-gray-500 mt-2">Рекорд: <span id="record-spiral">0</span></p>
+            <div onclick="selectLevel('spiral')" id="card-spiral" class="level-card p-4 rounded-xl cursor-pointer locked">
+                <div class="text-2xl mb-2">🌀</div>
+                <h3 class="text-sm font-bold">СПИРАЛЬ</h3>
+                <p class="text-[10px] text-gray-500">Рекорд: <span id="record-spiral">0</span></p>
             </div>
-            <div onclick="selectLevel('maze')" id="card-maze" class="level-card p-6 rounded-2xl cursor-pointer locked">
-                <div class="text-4xl mb-4">🧱</div>
-                <h3 class="font-bold">ЛАБИРИНТ</h3>
-                <p id="lock-maze" class="text-[10px] text-red-500 mt-1 italic">Нужно 80% в Спирали</p>
-                <p class="text-xs text-gray-500 mt-2">Рекорд: <span id="record-maze">0</span></p>
+            <div onclick="selectLevel('maze')" id="card-maze" class="level-card p-4 rounded-xl cursor-pointer locked">
+                <div class="text-2xl mb-2">🧱</div>
+                <h3 class="text-sm font-bold">ЛАБИРИНТ</h3>
+                <p class="text-[10px] text-gray-500">Рекорд: <span id="record-maze">0</span></p>
             </div>
-        </div>
-        
-        <div class="bg-blue-900/20 p-4 rounded-xl inline-block text-sm text-blue-300 mb-8 border border-blue-500/30">
-            <kbd class="bg-blue-500/20 px-2 py-1 rounded">W,A,S,D</kbd> - Движение | 
-            <kbd class="bg-blue-500/20 px-2 py-1 rounded">SPACE</kbd> - Щетка | 
-            <kbd class="bg-blue-500/20 px-2 py-1 rounded">ESC</kbd> - Пауза
         </div>
     </div>
 </div>
 
 <!-- Экран Паузы -->
 <div id="pause-screen" class="ui-screen hidden">
-    <div class="text-center p-12 bg-slate-900 rounded-3xl border-2 border-slate-700 shadow-2xl">
-        <h2 class="text-4xl font-bold mb-8">ПАУЗА</h2>
-        <div class="flex flex-col gap-4">
-            <button onclick="resumeGame()" class="btn-primary px-12 py-4 rounded-xl font-bold text-lg">ПРОДОЛЖИТЬ</button>
-            <button onclick="backToMenu()" class="bg-slate-700 hover:bg-slate-600 px-12 py-4 rounded-xl font-bold transition">В МЕНЮ</button>
+    <div class="text-center p-8 bg-slate-900 rounded-3xl border-2 border-slate-700 w-80">
+        <h2 class="text-3xl font-bold mb-6">ПАУЗА</h2>
+        <div class="flex flex-col gap-3">
+            <button onclick="resumeGame()" class="bg-blue-600 p-4 rounded-xl font-bold">ПРОДОЛЖИТЬ</button>
+            <button onclick="backToMenu()" class="bg-slate-700 p-4 rounded-xl font-bold">В МЕНЮ</button>
         </div>
     </div>
 </div>
 
 <!-- Экран Результатов -->
 <div id="result-screen" class="ui-screen hidden">
-    <div class="text-center p-12 bg-slate-900 rounded-3xl border-2 border-blue-500/50 shadow-2xl max-w-md w-full">
-        <h2 id="result-title" class="text-4xl font-black mb-2 text-blue-400">МИССИЯ ВЫПОЛНЕНА!</h2>
-        <div class="my-8 space-y-4">
-            <div class="flex justify-between text-gray-400 border-b border-slate-800 pb-2">
+    <div class="text-center p-8 bg-slate-900 rounded-3xl border-2 border-blue-500/50 w-80">
+        <h2 id="result-title" class="text-2xl font-black mb-2 text-blue-400 uppercase">ОТЛИЧНО!</h2>
+        <div class="my-6 space-y-2 text-sm">
+            <div class="flex justify-between text-gray-400">
                 <span>Очищено:</span>
                 <span id="result-percent" class="text-white font-bold">0%</span>
             </div>
-            <div class="flex justify-between text-gray-400 border-b border-slate-800 pb-2">
+            <div class="flex justify-between text-gray-400">
                 <span>Очки:</span>
                 <span id="result-score" class="text-white font-bold">0</span>
             </div>
         </div>
-        <div class="flex flex-col gap-4">
-            <button id="next-lvl-btn" onclick="nextLevel()" class="btn-primary px-12 py-4 rounded-xl font-bold text-lg text-white">СЛЕДУЮЩИЙ УРОВЕНЬ</button>
-            <button onclick="backToMenu()" class="bg-slate-700 hover:bg-slate-600 px-12 py-4 rounded-xl font-bold transition text-white">В МЕНЮ</button>
+        <div class="flex flex-col gap-3">
+            <button id="next-lvl-btn" onclick="nextLevel()" class="bg-blue-600 p-4 rounded-xl font-bold">СЛЕДУЮЩИЙ</button>
+            <button onclick="backToMenu()" class="bg-slate-700 p-4 rounded-xl font-bold">В МЕНЮ</button>
         </div>
     </div>
 </div>
 
 <!-- Игровой HUD -->
-<div class="hud-top">
-    <div class="flex gap-4 interactive">
-        <div class="status-panel p-4 rounded-2xl min-w-[140px]">
-            <div class="text-[10px] text-gray-500 uppercase font-bold">Время</div>
-            <div id="hud-timer" class="text-2xl font-mono font-bold">02:00</div>
-        </div>
-        <div class="status-panel p-4 rounded-2xl min-w-[140px]">
-            <div class="text-[10px] text-gray-500 uppercase font-bold">Прогресс</div>
-            <div id="hud-percent" class="text-2xl font-mono font-bold text-blue-400">0%</div>
+<div class="absolute top-4 left-4 right-4 flex justify-between pointer-events-none z-30">
+    <div class="bg-slate-900/80 backdrop-blur px-3 py-2 rounded-xl border border-slate-700">
+        <div id="hud-timer" class="text-xl font-mono font-bold">01:00</div>
+        <div id="hud-percent" class="text-xs font-bold text-blue-400">0% ОЧИЩЕНО</div>
+    </div>
+    <div class="flex gap-2">
+        <button onclick="togglePause()" class="bg-slate-900/80 backdrop-blur p-3 rounded-xl border border-slate-700 pointer-events-auto">⏸</button>
+        <div class="bg-slate-900/80 backdrop-blur px-3 py-2 rounded-xl border border-slate-700 min-w-[80px] text-right">
+            <div class="text-[8px] text-gray-500 uppercase">Счет</div>
+            <div id="hud-score" class="text-lg font-black">0</div>
         </div>
     </div>
-    <div class="flex gap-4 interactive items-start">
-        <button onclick="togglePause()" class="status-panel p-4 rounded-2xl hover:bg-slate-800 transition">
-            <span id="pause-icon">⏸</span>
-        </button>
-        <div class="status-panel p-4 rounded-2xl min-w-[180px] border-r-4 border-r-green-500 text-white">
-            <div class="text-[10px] text-gray-500 uppercase font-bold text-right">Счет</div>
-            <div id="hud-score" class="text-3xl font-black text-right">0</div>
-        </div>
+</div>
+
+<!-- Мобильные Контроллеры -->
+<div id="mobile-controls" class="controls-container hidden">
+    <div class="joystick-base" id="joystick-base">
+        <div class="joystick-stick" id="joystick-stick"></div>
     </div>
+    <div class="action-button" id="brush-btn">🧹</div>
 </div>
 
 <canvas id="simCanvas"></canvas>
@@ -165,7 +186,7 @@
     let totalSnowInPath = 0;
     
     // Состояние игры
-    let gameState = 'MENU'; // MENU, PLAYING, PAUSED, RESULT
+    let gameState = 'MENU';
     let currentLevel = 'line';
     let levelsData = {
         line: { unlocked: true, minScore: 0, requiredPercent: 80, next: 'zigzag' },
@@ -175,98 +196,99 @@
     };
 
     let score = 0;
-    let hp = 100;
     let timeLeft = 0;
     let timerInterval;
-    let lastCleanTime = 0;
-    let combo = 0;
 
     const robot = {
         x: 0, y: 0, angle: 0, speed: 0, turnSpeed: 0,
         brushActive: false, brushAngle: 0
     };
 
-    const keys = {};
+    // Джойстик данные
+    const joystick = {
+        active: false,
+        startX: 0, startY: 0,
+        currX: 0, currY: 0,
+        maxRadius: 60
+    };
 
     function init() {
         canvas = document.getElementById('simCanvas');
         ctx = canvas.getContext('2d');
         resize();
         
-        window.addEventListener('keydown', e => {
-            keys[e.code] = true;
-            if(e.code === 'Escape') togglePause();
-        });
-        window.addEventListener('keyup', e => keys[e.code] = false);
-        window.addEventListener('resize', resize);
-        
+        setupTouchControls();
         loadProgress();
         updateMenuUI();
         gameLoop();
     }
 
-    function loadProgress() {
-        const saved = localStorage.getItem('ev3_game_progress_v4');
-        if(saved) {
-            const data = JSON.parse(saved);
-            for(let key in data) {
-                if(levelsData[key]) {
-                    levelsData[key].unlocked = data[key].unlocked;
-                    levelsData[key].minScore = data[key].minScore;
-                }
-            }
-        }
-    }
+    function setupTouchControls() {
+        const jBase = document.getElementById('joystick-base');
+        const jStick = document.getElementById('joystick-stick');
+        const brushBtn = document.getElementById('brush-btn');
 
-    function saveProgress() {
-        localStorage.setItem('ev3_game_progress_v4', JSON.stringify(levelsData));
-    }
-
-    function updateMenuUI() {
-        for(let id in levelsData) {
-            const card = document.getElementById('card-' + id);
-            const lock = document.getElementById('lock-' + id);
-            const record = document.getElementById('record-' + id);
+        const handleMove = (e) => {
+            if (!joystick.active) return;
+            const touch = e.touches[0];
+            const rect = jBase.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
             
-            if(levelsData[id].unlocked) {
-                card.classList.remove('locked');
-                if(lock) lock.style.display = 'none';
-            } else {
-                card.classList.add('locked');
-                if(lock) lock.style.display = 'block';
+            let dx = touch.clientX - centerX;
+            let dy = touch.clientY - centerY;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (dist > joystick.maxRadius) {
+                dx *= joystick.maxRadius / dist;
+                dy *= joystick.maxRadius / dist;
             }
-            if(record) record.innerText = levelsData[id].minScore;
-        }
-    }
 
-    function selectLevel(id) {
-        if(!levelsData[id].unlocked) return;
-        currentLevel = id;
-        startLevel();
+            jStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+            
+            // Расчет управления
+            // dy - скорость (инвертировано), dx - поворот
+            robot.speed = -(dy / joystick.maxRadius) * 3.5;
+            robot.turnSpeed = (dx / joystick.maxRadius) * 0.06;
+        };
+
+        jBase.addEventListener('touchstart', (e) => {
+            joystick.active = true;
+            handleMove(e);
+        });
+
+        window.addEventListener('touchmove', handleMove, { passive: false });
+        window.addEventListener('touchend', () => {
+            joystick.active = false;
+            jStick.style.transform = `translate(-50%, -50%)`;
+            robot.speed = 0;
+            robot.turnSpeed = 0;
+        });
+
+        brushBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            robot.brushActive = !robot.brushActive;
+            brushBtn.classList.toggle('active', robot.brushActive);
+        });
     }
 
     function startLevel() {
         gameState = 'PLAYING';
         document.getElementById('menu-screen').classList.add('hidden');
         document.getElementById('result-screen').classList.add('hidden');
-        document.getElementById('pause-screen').classList.add('hidden');
+        document.getElementById('mobile-controls').classList.remove('hidden');
         
         score = 0;
-        hp = 100;
-        combo = 0;
         robot.speed = 0;
-        robot.angle = 0;
+        robot.turnSpeed = 0;
         robot.brushActive = false;
+        document.getElementById('brush-btn').classList.remove('active');
         
-        if (currentLevel === 'maze') {
-            timeLeft = 120;
-            robot.x = 225; robot.y = 225;
-        } else {
-            timeLeft = 60;
-            robot.x = 100; robot.y = canvas.height / 2;
-            if(currentLevel === 'spiral') { robot.x = canvas.width/2; robot.y = canvas.height/2; }
-        }
+        robot.x = 100; robot.y = canvas.height / 2;
+        if(currentLevel === 'spiral') { robot.x = canvas.width/2; robot.y = canvas.height/2; }
+        if(currentLevel === 'maze') { robot.x = 225; robot.y = 225; }
 
+        timeLeft = (currentLevel === 'maze') ? 120 : 60;
         createWorld(currentLevel);
         
         clearInterval(timerInterval);
@@ -297,6 +319,7 @@
         document.getElementById('menu-screen').classList.remove('hidden');
         document.getElementById('pause-screen').classList.add('hidden');
         document.getElementById('result-screen').classList.add('hidden');
+        document.getElementById('mobile-controls').classList.add('hidden');
         updateMenuUI();
     }
 
@@ -308,47 +331,31 @@
         const percent = calculatePercent();
         const isWin = percent >= levelsData[currentLevel].requiredPercent;
         
-        // Сохранение рекорда
-        if(score > levelsData[currentLevel].minScore) {
-            levelsData[currentLevel].minScore = Math.floor(score);
-        }
-
-        // Разблокировка следующего уровня
-        if(isWin && levelsData[currentLevel].next) {
-            levelsData[levelsData[currentLevel].next].unlocked = true;
-        }
+        if(score > levelsData[currentLevel].minScore) levelsData[currentLevel].minScore = Math.floor(score);
+        if(isWin && levelsData[currentLevel].next) levelsData[levelsData[currentLevel].next].unlocked = true;
 
         saveProgress();
 
         document.getElementById('result-screen').classList.remove('hidden');
-        document.getElementById('result-title').innerText = isWin ? (percent === 100 ? "ИДЕАЛЬНАЯ ЧИСТОТА!" : "МИССИЯ ВЫПОЛНЕНА!") : "НУЖНО БОЛЬШЕ ЧИСТОТЫ";
-        document.getElementById('result-title').style.color = isWin ? "#60a5fa" : "#f87171";
         document.getElementById('result-percent').innerText = percent + "%";
         document.getElementById('result-score').innerText = Math.floor(score);
         
         const nextBtn = document.getElementById('next-lvl-btn');
-        if(isWin && levelsData[currentLevel].next) {
-            nextBtn.classList.remove('hidden');
-        } else {
-            nextBtn.classList.add('hidden');
-        }
+        nextBtn.classList.toggle('hidden', !(isWin && levelsData[currentLevel].next));
     }
 
     function nextLevel() {
         const next = levelsData[currentLevel].next;
-        if(next) {
-            currentLevel = next;
-            startLevel();
-        }
+        if(next) { currentLevel = next; startLevel(); }
     }
 
     function calculatePercent() {
-        let snowCount = 0;
+        let cleaned = 0;
         for(let i=0; i<snowGrid.length; i++) {
             if(!snowGrid[i]) continue;
-            for(let j=0; j<snowGrid[i].length; j++) if(snowGrid[i][j] === 2) snowCount++;
+            for(let j=0; j<snowGrid[i].length; j++) if(snowGrid[i][j] === 2) cleaned++;
         }
-        return totalSnowInPath > 0 ? Math.round((snowCount / totalSnowInPath) * 100) : 0;
+        return totalSnowInPath > 0 ? Math.round((cleaned / totalSnowInPath) * 100) : 0;
     }
 
     function createWorld(type) {
@@ -373,38 +380,25 @@
                 }
             }
         } else if (type === 'zigzag') {
-            for(let i = 100; i < canvas.width - 100; i += 4) {
-                const y = centerY + Math.sin(i * 0.01) * 200;
-                markSnowCircle(i, y, 40);
+            for(let i = 50; i < canvas.width - 50; i += 4) {
+                const y = centerY + Math.sin(i * 0.015) * 150;
+                markSnowCircle(i, y, 35);
             }
         } else if (type === 'spiral') {
-            for(let t = 0; t < 25; t += 0.15) {
-                const r = t * 18;
-                const x = centerX + Math.cos(t) * r;
-                const y = centerY + Math.sin(t) * r;
-                markSnowCircle(x, y, 40);
+            for(let t = 0; t < 20; t += 0.2) {
+                const r = t * 15;
+                markSnowCircle(centerX + Math.cos(t) * r, centerY + Math.sin(t) * r, 35);
             }
         } else if (type === 'maze') {
-            const mazeScale = 150;
+            const mazeScale = 120;
             const mazeData = [
-                [1,1,1,1,1,1,1,1,1,1],
-                [1,0,0,0,1,0,0,0,0,1],
-                [1,0,1,0,1,0,1,1,0,1],
-                [1,0,1,0,0,0,0,1,0,1],
-                [1,0,1,1,1,1,0,1,0,1],
-                [1,0,0,0,0,1,0,0,0,1],
-                [1,1,1,1,0,1,1,1,1,1],
-                [1,0,0,0,0,0,0,0,0,1],
-                [1,0,1,1,1,1,1,1,0,1],
-                [1,0,0,0,0,0,0,0,0,1],
-                [1,1,1,1,1,1,1,1,1,1]
+                [1,1,1,1,1,1,1],[1,0,0,0,1,0,1],[1,0,1,0,1,0,1],[1,0,1,0,0,0,1],[1,1,1,1,1,1,1]
             ];
             for(let row=0; row<mazeData.length; row++){
                 for(let col=0; col<mazeData[row].length; col++){
-                    const wx = col*mazeScale;
-                    const wy = row*mazeScale;
+                    const wx = col*mazeScale, wy = row*mazeScale;
                     if(mazeData[row][col] === 1) walls.push({x: wx, y: wy, w: mazeScale, h: mazeScale});
-                    else markSnowCircle(wx + mazeScale/2, wy + mazeScale/2, 55);
+                    else markSnowCircle(wx + mazeScale/2, wy + mazeScale/2, 45);
                 }
             }
         }
@@ -418,12 +412,8 @@
         for (let i = startI; i <= endI; i++) {
             for (let j = startJ; j <= endJ; j++) {
                 if (snowGrid[i] && snowGrid[i][j] === 0) {
-                    const dx = i * SNOW_DENSITY - px;
-                    const dy = j * SNOW_DENSITY - py;
-                    if (dx*dx + dy*dy < radius*radius) {
-                        snowGrid[i][j] = 1;
-                        totalSnowInPath++;
-                    }
+                    const dx = i * SNOW_DENSITY - px, dy = j * SNOW_DENSITY - py;
+                    if (dx*dx + dy*dy < radius*radius) { snowGrid[i][j] = 1; totalSnowInPath++; }
                 }
             }
         }
@@ -432,79 +422,47 @@
     function update() {
         if(gameState !== 'PLAYING') return;
 
-        if (keys['KeyW']) robot.speed = Math.min(robot.speed + 0.15, 3.5);
-        else if (keys['KeyS']) robot.speed = Math.max(robot.speed - 0.15, -2);
-        else robot.speed *= 0.95;
-
-        if (keys['KeyA']) robot.turnSpeed = -0.05;
-        else if (keys['KeyD']) robot.turnSpeed = 0.05;
-        else robot.turnSpeed = 0;
-
-        if (keys['Space']) { robot.brushActive = !robot.brushActive; keys['Space'] = false; }
-
         robot.angle += robot.turnSpeed;
-        
         let nextX = robot.x + Math.cos(robot.angle) * robot.speed;
         let nextY = robot.y + Math.sin(robot.angle) * robot.speed;
 
         let wallHit = false;
         for(let wall of walls) {
-            if(nextX + 18 > wall.x && nextX - 18 < wall.x + wall.w && 
-               nextY + 18 > wall.y && nextY - 18 < wall.y + wall.h) {
-                wallHit = true;
-                break;
-            }
+            if(nextX + 15 > wall.x && nextX - 15 < wall.x + wall.w && 
+               nextY + 15 > wall.y && nextY - 15 < wall.y + wall.h) { wallHit = true; break; }
         }
         
-        if(nextX < 20 || nextX > canvas.width - 20 || nextY < 20 || nextY > canvas.height - 20) wallHit = true;
+        if(nextX < 15 || nextX > canvas.width - 15 || nextY < 15 || nextY > canvas.height - 15) wallHit = true;
 
         if(wallHit) {
-            hp -= Math.abs(robot.speed) * 3;
             robot.speed *= -0.5;
-            if(hp <= 0) finishLevel();
         } else {
             robot.x = nextX;
             robot.y = nextY;
         }
 
         if (robot.brushActive) {
-            robot.brushAngle += 0.5;
-            cleanSnow();
-        }
-    }
+            robot.brushAngle += 0.4;
+            const bX = robot.x + Math.cos(robot.angle) * 30;
+            const bY = robot.y + Math.sin(robot.angle) * 30;
+            const radius = 32;
+            const sI = Math.floor((bX - radius) / SNOW_DENSITY);
+            const eI = Math.ceil((bX + radius) / SNOW_DENSITY);
+            const sJ = Math.floor((bY - radius) / SNOW_DENSITY);
+            const eJ = Math.ceil((bY + radius) / SNOW_DENSITY);
 
-    function cleanSnow() {
-        const bX = robot.x + Math.cos(robot.angle) * 35;
-        const bY = robot.y + Math.sin(robot.angle) * 35;
-        const radius = 35;
-
-        const startI = Math.floor((bX - radius) / SNOW_DENSITY);
-        const endI = Math.ceil((bX + radius) / SNOW_DENSITY);
-        const startJ = Math.floor((bY - radius) / SNOW_DENSITY);
-        const endJ = Math.ceil((bY + radius) / SNOW_DENSITY);
-
-        let cleaned = 0;
-        for (let i = startI; i <= endI; i++) {
-            for (let j = startJ; j <= endJ; j++) {
-                if (snowGrid[i] && snowGrid[i][j] === 1) {
-                    const dx = i * SNOW_DENSITY - bX;
-                    const dy = j * SNOW_DENSITY - bY;
-                    if (dx*dx + dy*dy < radius*radius) {
-                        snowGrid[i][j] = 2;
-                        cleaned++;
+            let cleaned = 0;
+            for (let i = sI; i <= eI; i++) {
+                for (let j = sJ; j <= eJ; j++) {
+                    if (snowGrid[i] && snowGrid[i][j] === 1) {
+                        const dx = i * SNOW_DENSITY - bX, dy = j * SNOW_DENSITY - bY;
+                        if (dx*dx + dy*dy < radius*radius) { snowGrid[i][j] = 2; cleaned++; }
                     }
                 }
             }
-        }
-        if (cleaned > 0) {
-            const now = Date.now();
-            if (now - lastCleanTime < 200) combo++; else combo = 1;
-            lastCleanTime = now;
-            score += cleaned * 5 * (1 + Math.floor(combo/50));
-            
-            // Проверка на мгновенное завершение (100% очистка)
-            if(calculatePercent() >= 100) {
-                finishLevel();
+            if(cleaned > 0) {
+                score += cleaned * 5;
+                if(calculatePercent() >= 100) finishLevel();
             }
         }
     }
@@ -512,71 +470,50 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Отрисовка стен
         walls.forEach(w => {
             ctx.fillStyle = '#0f172a';
             ctx.fillRect(w.x, w.y, w.w, w.h);
-            ctx.strokeStyle = '#1e293b';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(w.x, w.y, w.w, w.h);
         });
 
-        // Снег
         for(let i = 0; i < snowGrid.length; i++) {
             if(!snowGrid[i]) continue;
             for(let j = 0; j < snowGrid[i].length; j++) {
                 if(snowGrid[i][j] === 1) {
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    ctx.fillStyle = '#ffffff';
                     ctx.fillRect(i * SNOW_DENSITY, j * SNOW_DENSITY, SNOW_DENSITY - 1, SNOW_DENSITY - 1);
                 } else if(snowGrid[i][j] === 2) {
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
                     ctx.fillRect(i * SNOW_DENSITY, j * SNOW_DENSITY, SNOW_DENSITY, SNOW_DENSITY);
                 }
             }
         }
 
-        // Робот
         ctx.save();
         ctx.translate(robot.x, robot.y);
         ctx.rotate(robot.angle);
-        
-        // Корпус
         ctx.fillStyle = '#f8fafc';
-        ctx.beginPath();
-        ctx.roundRect ? ctx.roundRect(-22, -26, 44, 52, 6) : ctx.rect(-22, -26, 44, 52);
-        ctx.fill();
-        
-        // Экран EV3
+        ctx.fillRect(-18, -22, 36, 44); // Корпус
         ctx.fillStyle = '#1e293b';
-        ctx.fillRect(-12, -18, 24, 15);
+        ctx.fillRect(-10, -15, 20, 12); // Экран
         
-        // Гусеницы
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(-28, -24, 10, 16);
-        ctx.fillRect(-28, 8, 10, 16);
-        
-        // Щетка
-        ctx.translate(35, 0);
+        ctx.translate(28, 0);
         ctx.rotate(robot.brushAngle);
         ctx.fillStyle = robot.brushActive ? '#fbbf24' : '#475569';
-        ctx.fillRect(-4, -25, 8, 50);
+        ctx.fillRect(-3, -22, 6, 44); // Щетка
         ctx.restore();
     }
 
     function updateUI() {
         if(gameState !== 'PLAYING') return;
-        
-        const m = Math.floor(timeLeft / 60);
         const s = timeLeft % 60;
-        document.getElementById('hud-timer').innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        document.getElementById('hud-percent').innerText = calculatePercent() + '%';
+        document.getElementById('hud-timer').innerText = `0${Math.floor(timeLeft/60)}:${s < 10 ? '0'+s : s}`;
+        document.getElementById('hud-percent').innerText = calculatePercent() + '% ОЧИЩЕНО';
         document.getElementById('hud-score').innerText = Math.floor(score);
     }
 
     function resize() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        if(gameState === 'MENU') createWorld('line'); // Для фона в меню
     }
 
     function gameLoop() {
@@ -585,6 +522,25 @@
         updateUI();
         requestAnimationFrame(gameLoop);
     }
+
+    function loadProgress() {
+        const saved = localStorage.getItem('ev3_mobile_progress');
+        if(saved) levelsData = JSON.parse(saved);
+    }
+
+    function saveProgress() {
+        localStorage.setItem('ev3_mobile_progress', JSON.stringify(levelsData));
+    }
+
+    function updateMenuUI() {
+        for(let id in levelsData) {
+            const card = document.getElementById('card-' + id);
+            card.classList.toggle('locked', !levelsData[id].unlocked);
+            document.getElementById('record-' + id).innerText = levelsData[id].minScore;
+        }
+    }
+
+    function selectLevel(id) { if(levelsData[id].unlocked) { currentLevel = id; startLevel(); } }
 
     window.onload = init;
 </script>
